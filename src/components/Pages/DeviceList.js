@@ -46,8 +46,79 @@ function DeviceList() {
   if (deviceInfo.length === 0) {
     return <div>Loading...</div>;
   }
+
+
+
+
+
+
+
+
+  const clickDeviceHandler2 = async (deviceId) => {
+    setSelectedDevice(deviceId);
+    setShowModal(true);
+
+    const token = sessionStorage.getItem("authorizeKey");
+
+    try {
+      const response = await axios.get(
+        `http://api.hillntoe.com:7810/api/acqdata/lastest?device_id=${deviceId}`,
+        {
+          headers: {
+            Authorization: token,
+          },
+        }
+      );
+
+      if (response?.status === 200) {
+        const selectedDeviceInfo = response.data.find(
+          (device) => device.device_id === deviceId
+        );
+        setDeviceData(selectedDeviceInfo.datas);
+        setShowModal(true);
+      } else {
+        throw new Error(`Failed to fetch device data (${response?.status})`);
+      }
+    } catch (error) {
+      console.error("Error fetching device data:", error);
+    }
+  };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// http://api.hillntoe.com:7810/api/acqdata/lastest?device_id=${deviceId}`
+
+  
   // 디바이스 클릭 핸들러
   const clickDeviceHandler = async (deviceId) => {
+    console.log(deviceId)
     setSelectedDevice(deviceId);
     setShowModal(true);
 
@@ -148,9 +219,9 @@ function DeviceList() {
                 height: "76%",
                 display: "flex",
                 flexWrap: "wrap",
-                justifyContent: "center",
                 alignItems:'flex-start',
                 marginLeft: '30px' ,
+                paddingTop: '10px',
                 overflowY:'auto'
               }}
             >

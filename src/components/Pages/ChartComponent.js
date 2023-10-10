@@ -6,103 +6,123 @@ function ChartComponent() {
   const token = sessionStorage.getItem("authorizeKey");
 
   const fallArr = [0, 0, 0, 0, 0, 0, 0];
-  const [HRArr, setHRArr] = useState([0, 0, 0, 0, 0, 0, 0]); // HR COUNT(Arr.length = 12)
-  const [BRArr, setBRArr] = useState([0, 0, 0, 0, 0, 0, 0]); // BR COUNT(Arr.length = 12)
+  const [HRArr, setHRArr] = useState([0, 0, 0, 0, 0, 0, 0]);
+  const [BRArr, setBRArr] = useState([0, 0, 0, 0, 0, 0, 0]);
   const [chartLabel, setChartLabel] = useState([]);
+  const [yMaxValue, setYMaxValue] = useState(0);
 
   useEffect(() => {
     // 데이터 요청 함수 호출
-    serchData();
+    searchData();
   }, []);
 
-  const serchData = async () => {
-    try {
-      // 1번 장치 데이터 가져오기
-      const response1 = await axios.get(
+  const searchData = () => {
+    // 1번 장치 데이터 가져오기
+    axios
+      .get(
         `http://api.hillntoe.com:7810/api/acqdata/section?device_id=1&acq_type=H&start_date=202309010000&end_date=202310042359`,
         {
           headers: {
             Authorization: token,
           },
         }
-      );
+      )
+      .then((response1) => {
+        // 2번 장치 데이터 가져오기
+        axios
+          .get(
+            `http://api.hillntoe.com:7810/api/acqdata/section?device_id=2&acq_type=H&start_date=202309010000&end_date=202310042359`,
+            {
+              headers: {
+                Authorization: token,
+              },
+            }
+          )
+          .then((response2) => {
+            if (response1.status === 200 && response2.status === 200) {
+              // 데이터 합치기
+              const combinedData = [...response1.data, ...response2.data];
 
-      // 2번 장치 데이터 가져오기
-      const response2 = await axios.get(
-        `http://api.hillntoe.com:7810/api/acqdata/section?device_id=2&acq_type=H&start_date=202309010000&end_date=202310042359`,
-        {
-          headers: {
-            Authorization: token,
-          },
-        }
-      );
+              const timestampToFormattedDate = (timestamp) => {
+                const date = new Date(timestamp * 1000);
 
-      if (response1?.status === 200 && response2?.status === 200) {
-        console.log(response1.data);
-        console.log(response2.data);
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, "0");
+                const day = String(date.getDate()).padStart(2, "0");
+                const hours = String(date.getHours()).padStart(2, "0");
+                const minutes = String(date.getMinutes()).padStart(2, "0");
 
-        // 데이터 합치기
-        const combinedData = [...response1.data, ...response2.data];
+                const formattedDate = `${year}${month}${day}${hours}${minutes}`;
+                return formattedDate;
+              };
 
-        const timestampToFormattedDate = (timestamp) => {
-          const date = new Date(timestamp * 1000);
+              const dateCountHR = {};
+              const dateCountBR = {};
+              combinedData.forEach((a) => {
+                const maxBRValue = a.datas[2].max_value;
+                const maxHRValue = a.datas[3].max_value;
+                const date = timestampToFormattedDate(a.timestamp);
+                const dateOnly = date.substring(0, 8);
 
-          const year = date.getFullYear();
-          const month = String(date.getMonth() + 1).padStart(2, "0");
-          const day = String(date.getDate()).padStart(2, "0");
-          const hours = String(date.getHours()).padStart(2, "0");
-          const minutes = String(date.getMinutes()).padStart(2, "0");
+                if (!dateCountHR[dateOnly]) {
+                  dateCountHR[dateOnly] = 0;
+                }
 
-          const formattedDate = `${year}${month}${day}${hours}${minutes}`;
-          return formattedDate;
-        };
+                if (!dateCountBR[dateOnly]) {
+                  dateCountBR[dateOnly] = 0;
+                }
 
-        const dateCountHR = {}; // 날짜별로 HR 카운트를 저장할 객체
-        const dateCountBR = {}; // 날짜별로 BR 카운트를 저장할 객체
+                if (maxHRValue > 96) {
+                  dateCountHR[dateOnly]++;
+                }
 
-        combinedData.forEach((a) => {
-          const maxBRValue = a.datas[2].max_value;
-          const maxHRValue = a.datas[3].max_value;
-          const date = timestampToFormattedDate(a.timestamp);
-          const dateOnly = date.substring(0, 8); // 시간 정보 제외한 날짜 부분
-          console.log(dateOnly, maxHRValue, maxBRValue);
-          // 날짜별로 HR 카운트 초기화
-          if (!dateCountHR[dateOnly]) {
-            dateCountHR[dateOnly] = 0;
-          }
+                if (maxBRValue > 15) {
+                  dateCountBR[dateOnly]++;
+                }
+              });
 
-          // 날짜별로 BR 카운트 초기화
-          if (!dateCountBR[dateOnly]) {
-            dateCountBR[dateOnly] = 0;
-          }
+              const today = new Date();
+              const endDate = new Date(today.getFullYear(), 9, 2);
+              const startDate = new Date(today.getFullYear(), 9, 8);
 
-          // maxHRValue가 96보다 큰 경우 HR 카운트 증가
-          if (maxHRValue > 96) {
-            dateCountHR[dateOnly]++;
-          }
+              const dateArray = [];
 
-          // maxBRValue가 15보다 큰 경우 BR 카운트 증가
-          if (maxBRValue > 15) {
-            dateCountBR[dateOnly]++;
-          }
-        });
+              for (
+                let date = startDate;
+                date >= endDate;
+                date.setDate(date.getDate() - 1)
+              ) {
+                const month = date.getMonth() + 1;
+                const day = date.getDate();
+                const formattedDate = `${month}월${day}일`;
+                dateArray.push(formattedDate);
+              }
 
-        setChartLabel(Object.keys(dateCountHR).slice(-7));
-        // 각 날짜별 카운트 출력
+              const dateArraySort = dateArray.reverse();
+              setChartLabel(dateArraySort);
 
-        const myDataHRCount = Object.values(dateCountHR);
-        const reverseHR = myDataHRCount.slice(-7);
-        setHRArr(reverseHR);
+              const myDataHRCount = Object.values(dateCountHR);
+              const reverseHR = myDataHRCount.slice(-7);
+              setHRArr(reverseHR);
 
-        const myDataBRCount = Object.values(dateCountBR);
-        const reverseBR = myDataBRCount.slice(-7);
-        setBRArr(reverseBR);
-      } else {
-        throw new Error(`Failed to fetch device info`);
-      }
-    } catch (error) {
-      console.error("Error fetching device info:", error);
-    }
+              const myDataBRCount = Object.values(dateCountBR);
+              const reverseBR = myDataBRCount.slice(-7);
+              setBRArr(reverseBR);
+
+              // yMaxValue 설정
+              const maxValue = Math.max(...reverseHR, ...reverseBR);
+              setYMaxValue(Math.floor(maxValue*1.4));
+            } else {
+              throw new Error(`Failed to fetch device info`);
+            }
+          })
+          .catch((error2) => {
+            console.error("Error fetching device info 2:", error2);
+          });
+      })
+      .catch((error1) => {
+        console.error("Error fetching device info 1:", error1);
+      });
   };
 
   const data = {
@@ -115,7 +135,7 @@ function ChartComponent() {
         borderColor: "#00de05",
         tension: 0.01,
       },
-      {
+        {
         label: "  심박수   ",
         data: HRArr,
         fill: false,
@@ -141,7 +161,7 @@ function ChartComponent() {
         },
       },
       y: {
-        max: 15,
+        max: yMaxValue,
         beginAtZero: true,
         ticks: {
           callback: function (value) {

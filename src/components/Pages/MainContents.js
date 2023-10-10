@@ -73,10 +73,6 @@ function MainContents({ totalSleepTime }) {
     fetchData();
   }, [timestamp]);
 
-  const updateUsageTime = () => {
-    setUsageTime((prevUsageTime) => prevUsageTime + 1); // 1초씩 누적
-  };
-
   // const clickDeviceHandler = async () => {
   //   const token = sessionStorage.getItem("authorizeKey");
   //   try {
@@ -151,7 +147,6 @@ function MainContents({ totalSleepTime }) {
     ],
   };
 
-
   const options = {
     cutout: "80%",
     rotation: -90,
@@ -171,6 +166,37 @@ function MainContents({ totalSleepTime }) {
     <div className="content-container">
       <div className="content-box">
         {/* 첫 번째 content-main 섹션 */}
+        <div className="content-main" style={{ width: "498px" }}>
+          <div className="header-container">재실 감지 패턴</div>
+          <div className="main-container">
+            <div className="main-time main-time2">
+              <div style={{ marginRight: "125px" }}>
+                <div style={{ fontSize: "14px" }}>화장실 평균 이용시간</div>
+                <div>1시간 58분</div>
+                <div style={{ fontSize: "14px", marginTop: "31px" }}>
+                  1회 평균 이용시간
+                </div>
+                <div>
+                  {Math.floor(usageTime / 60)}분 {usageTime % 60}초
+                </div>
+              </div>
+            </div>
+            <div className="main-chart">
+              <Doughnut data={toiletData1} options={options} />
+            </div>
+          </div>
+          <div className="main-danger">
+            수면 위험도
+            <div>
+              <img src={stablebox} alt="stable" />
+              <img src={basicboxColor} alt="basic" />
+              <img src={cautionbox} alt="caution" />
+              <img src={dangerbox} alt="danger" />
+            </div>
+          </div>
+        </div>
+
+        {/* 두 번째 content-main 섹션 */}
         <div className="content-main" style={{ width: "498px" }}>
           <div className="header-container">수면 패턴 감지</div>
           <div className="main-container">
@@ -210,35 +236,6 @@ function MainContents({ totalSleepTime }) {
             <div>
               <img src={stableboxColor} alt="stable" />
               <img src={basicbox} alt="basic" />
-              <img src={cautionbox} alt="caution" />
-              <img src={dangerbox} alt="danger" />
-            </div>
-          </div>
-        </div>
-
-        {/* 두 번째 content-main 섹션 */}
-        <div className="content-main" style={{ width: "498px" }}>
-          <div className="header-container">화장실 패턴 감지</div>
-          <div className="main-container">
-            <div className="main-time main-time2">
-              <div style={{ marginRight: "125px" }}>
-                <div style={{ fontSize: "14px" }}>화장실 평균 이용시간</div>
-                <div>1시간 58분</div>
-                <div style={{ fontSize: "14px", marginTop: "31px" }}>
-                  1회 평균 이용시간
-                </div>
-                <div>{Math.floor(usageTime / 60)}분 {usageTime % 60}초</div>
-              </div>
-            </div>
-            <div className="main-chart">
-              <Doughnut data={toiletData1} options={options} />
-            </div>
-          </div>
-          <div className="main-danger">
-            수면 위험도
-            <div>
-              <img src={stablebox} alt="stable" />
-              <img src={basicboxColor} alt="basic" />
               <img src={cautionbox} alt="caution" />
               <img src={dangerbox} alt="danger" />
             </div>

@@ -1,48 +1,82 @@
-import { useTheme } from "@emotion/react";
+import { useEffect } from "react";
 import axios from "axios";
 import React, { useState } from "react";
 import { Line } from "react-chartjs-2";
+import Select from 'react-select'
+
 
 function ChartComponent2() {
   const token = sessionStorage.getItem("authorizeKey");
 
-  const [HRArr, setHRArr] = useState([0, 0, 0, 0, 0, 0, 0]); // HR COUNT(Arr.length = 12)
-  const [BRArr, setBRArr] = useState([0, 0, 0, 0, 0, 0, 0]); // BR COUNT(Arr.length = 12)
-  const [chartLabel,setChartLabel] = useState([1,2,3,4,5,6,7])
+  const [HRArr, setHRArr] = useState([60, 70, 40, 50, 60, 70, 0]); // HR COUNT(Arr.length = 12)
+  const [BRArr, setBRArr] = useState([20, 10, 20, 10, 10, 10, 0]); // BR COUNT(Arr.length = 12)
+  const [chartLabel, setChartLabel] = useState([]);
+  const [AvgHRData,setAvgHRDate] = useState([]);
+  const [AvgBRData,setAvgBRData] = useState([]);
 
+
+
+
+  const HRBRData = () => {
+    axios.get(`http://api.hillntoe.com:7810/api/acqdata/count?device_id=1&acq_type=D&count=7`,{headers:{Authorization:token}})
+    .then((response)=>{
+      const data = response.data
+      data.map((value,index)=>{
+        AvgHRData.push(value.datas[2].max_value)
+      })
+      data.map((value,index)=>{
+        AvgBRData.push(value.datas[3].max_value)
+      })        
+    })
+    .catch((error)=>{console.error(error)})
+  }
+
+
+  // 차트 Label  function
+  const LabelArrayData = () => {
+    const today = new Date();
+    const endDate = new Date(today.getFullYear(), 9, 2);
+    const startDate = new Date(today.getFullYear(), 9, 8);
   
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    const dateArray = [];
   
+    for (let date = startDate; date >= endDate; date.setDate(date.getDate() - 1)) {
+      const month = date.getMonth() + 1;
+      const day = date.getDate();
+      const formattedDate = `${month}월${day}일`;
+      dateArray.push(formattedDate);
+    }
+  
+    const dateArraysort = dateArray.reverse();
+    setChartLabel(dateArraysort);
+  }
+  HRBRData(); 
+
+
+  useEffect(() => {
+    LabelArrayData();
+  }, []); 
+
+ 
+  console.log(AvgHRData)
+  console.log(AvgBRData)
+
+
+
+
   let data = {
-    labels: null,
+    labels: chartLabel,
     datasets: [
       {
         label: "심박수",
-        data: HRArr,
+        data: AvgHRData,
         fill: false,
         borderColor: "#d60225",
         tension: 0.01,
       },
       {
         label: "호흡수",
-        data: BRArr,
+        data: AvgBRData,
         fill: false,
         borderColor: "#0041b9",
         tension: 0.01,
@@ -112,6 +146,14 @@ function ChartComponent2() {
       },
     },
   };
+
+  const options = [
+    { value: '7days', label: '7days' },
+    { value: '30days', label: '30days' },
+    ]
+
+
+
 
   return (
     <div style={{ width: "694px", height: "240px", margin: "auto" }}>
