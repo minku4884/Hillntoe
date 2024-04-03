@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import "./DateTimer.css";
-
+import "../styles/DateTimer.css"
 function DateTimer() {
   const [dateInfo, setDateInfo] = useState("");
   const [timer, setTimer] = useState("");

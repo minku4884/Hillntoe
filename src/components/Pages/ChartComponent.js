@@ -2,140 +2,194 @@ import React, { useState, useEffect } from "react";
 import { Line } from "react-chartjs-2";
 import axios from "axios";
 
-function ChartComponent() {
+function ChartComponent(props) {
   const token = sessionStorage.getItem("authorizeKey");
-
-  const fallArr = [0, 0, 0, 0, 0, 0, 0];
-  const [HRArr, setHRArr] = useState([0, 0, 0, 0, 0, 0, 0]);
-  const [BRArr, setBRArr] = useState([0, 0, 0, 0, 0, 0, 0]);
+  const [HRArr, setHRArr] = useState([]);
+  const [BRArr, setBRArr] = useState([]);
   const [chartLabel, setChartLabel] = useState([]);
-  const [yMaxValue, setYMaxValue] = useState(0);
+  const maxDataValue = Math.max(...[...HRArr, ...BRArr]);
+  const maxDataValueWithPadding = Math.ceil(maxDataValue * 1.29);
+
+  // SEARCH YYYYMMDDHHmm
+
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = (today.getMonth() + 1).toString().padStart(2, "0");
+  const day = today.getDate().toString().padStart(2, "0");
+  const hours = today.getHours().toString().padStart(2, "0");
+  const end_date = `${year}${month}${day}${hours}00`;
+
+  const fiveDaysAgo = new Date(today);
+  fiveDaysAgo.setDate(today.getDate() - 1);
+
+  const fiveDaysAgoYear = fiveDaysAgo.getFullYear();
+  const fiveDaysAgoMonth = (fiveDaysAgo.getMonth() + 1)
+    .toString()
+    .padStart(2, "0");
+  const fiveDaysAgoDay = fiveDaysAgo.getDate().toString().padStart(2, "0");
+
+  const start_date = `${fiveDaysAgoYear}${fiveDaysAgoMonth}${fiveDaysAgoDay}${hours}00`;
+
+  const fetchDataForDevice = (deviceId) => {
+    return axios.get(
+      `http://api.hillntoe.com:7810/api/acqdata/section?device_id=${deviceId}&acq_type=E&start_date=${start_date}&end_date=${end_date}`,
+      {
+        headers: {
+          Authorization: token,
+        },
+      }
+    );
+  };
+
+  let response = [];
+
+  const searchData = async () => {
+    const deviceIds = props.deviceId;
+    const promises = [];
+    const dateCounts = {
+      hrCount: {},
+      brCount: {},
+    };
+    for (const deviceId of deviceIds) {
+      try {
+        const response1 = await axios.get(
+          `http://api.hillntoe.com:7810/api/config/device/info?device_id=${deviceId}`,
+          {
+            headers: {
+              Authorization: token,
+            },
+          }
+        );
+        // 데이터 처리 작업 추가
+        response.push(response1);
+        promises.push(fetchDataForDevice(deviceId));
+      } catch (error) {
+        console.error("Error fetching device info:", error);
+      }
+    }
+
+    try {
+      const responses = await Promise.all(promises);
+      const combinedData = responses.flatMap((response) => response.data);
+
+      // const deviceType = response.map((value)=>value.data[0].device_type)
+
+      combinedData.reverse();
+      combinedData.forEach((value, index) => {
+        const date = new Date(value.timestamp * 1000);
+        const hour = date.getHours().toString().padStart(2, "0");
+        const minute = date.getMinutes().toString().padStart(2, "0");
+        const timeString = `${hour}:${minute}`;
+
+        if (!dateCounts[timeString]) {
+          dateCounts[timeString] = {
+            hrCount: 0,
+            brCount: 0,
+          };
+        }
+        let BR, HR;
+        if (value.datas.length == 9) {
+          BR = value.datas[2].max_value;
+          HR = value.datas[3].max_value;
+        } else if (value.datas.length == 13) {
+          BR = value.datas[10].max_value;
+          HR = value.datas[12].max_value;
+        }
+
+        dateCounts[timeString].hrCount +=
+          HR !== 0 && (HR > 95 || HR < 40) ? 1 : 0;
+        dateCounts[timeString].brCount +=
+          BR !== 0 && (BR > 15 || BR < 5) ? 1 : 0;
+      });
+
+      const chartDataArray = Object.entries(dateCounts).map(
+        ([time, counts]) => ({
+          time,
+          hrCount: counts.hrCount,
+          brCount: counts.brCount,
+        })
+      );
+
+      const targetTimes = [
+        "00",
+        "01",
+        "02",
+        "03",
+        "04",
+        "05",
+        "06",
+        "07",
+        "08",
+        "09",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21",
+        "22",
+        "23",
+      ];
+
+      const filteredData = chartDataArray.filter((data) =>
+        targetTimes.some((time) => data.time.startsWith(time))
+      );
+
+      const mergedData = targetTimes.reduce((result, targetTime) => {
+        const filteredByTime = filteredData.filter((data) =>
+          data.time.startsWith(targetTime)
+        );
+        const totalHrCount = filteredByTime.reduce(
+          (total, data) => total + data.hrCount,
+          0
+        );
+        const totalBrCount = filteredByTime.reduce(
+          (total, data) => total + data.brCount,
+          0
+        );
+
+        // console.log(`time : ${targetTime} hrCount : ${totalHrCount} brCount : ${totalBrCount}`)
+
+        result.push({
+          time: targetTime,
+          hrCount: totalHrCount,
+          brCount: totalBrCount,
+        });
+
+        return result;
+      }, []);
+
+      setChartLabel(mergedData.map((value) => value.time + ":00"));
+      setHRArr(mergedData.map((value) => value.hrCount));
+      setBRArr(mergedData.map((value) => value.brCount));
+    } catch (error) {
+      console.error("Error fetching device data:", error);
+    }
+  };
 
   useEffect(() => {
-    // 데이터 요청 함수 호출
     searchData();
-  }, []);
+  }, [props.deviceId]);
 
-  const searchData = () => {
-    // 1번 장치 데이터 가져오기
-    axios
-      .get(
-        `http://api.hillntoe.com:7810/api/acqdata/section?device_id=1&acq_type=H&start_date=202309010000&end_date=202310042359`,
-        {
-          headers: {
-            Authorization: token,
-          },
-        }
-      )
-      .then((response1) => {
-        // 2번 장치 데이터 가져오기
-        axios
-          .get(
-            `http://api.hillntoe.com:7810/api/acqdata/section?device_id=2&acq_type=H&start_date=202309010000&end_date=202310042359`,
-            {
-              headers: {
-                Authorization: token,
-              },
-            }
-          )
-          .then((response2) => {
-            if (response1.status === 200 && response2.status === 200) {
-              // 데이터 합치기
-              const combinedData = [...response1.data, ...response2.data];
-
-              const timestampToFormattedDate = (timestamp) => {
-                const date = new Date(timestamp * 1000);
-
-                const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, "0");
-                const day = String(date.getDate()).padStart(2, "0");
-                const hours = String(date.getHours()).padStart(2, "0");
-                const minutes = String(date.getMinutes()).padStart(2, "0");
-
-                const formattedDate = `${year}${month}${day}${hours}${minutes}`;
-                return formattedDate;
-              };
-
-              const dateCountHR = {};
-              const dateCountBR = {};
-              combinedData.forEach((a) => {
-                const maxBRValue = a.datas[2].max_value;
-                const maxHRValue = a.datas[3].max_value;
-                const date = timestampToFormattedDate(a.timestamp);
-                const dateOnly = date.substring(0, 8);
-
-                if (!dateCountHR[dateOnly]) {
-                  dateCountHR[dateOnly] = 0;
-                }
-
-                if (!dateCountBR[dateOnly]) {
-                  dateCountBR[dateOnly] = 0;
-                }
-
-                if (maxHRValue > 96) {
-                  dateCountHR[dateOnly]++;
-                }
-
-                if (maxBRValue > 15) {
-                  dateCountBR[dateOnly]++;
-                }
-              });
-
-              const today = new Date();
-              const endDate = new Date(today.getFullYear(), 9, 2);
-              const startDate = new Date(today.getFullYear(), 9, 8);
-
-              const dateArray = [];
-
-              for (
-                let date = startDate;
-                date >= endDate;
-                date.setDate(date.getDate() - 1)
-              ) {
-                const month = date.getMonth() + 1;
-                const day = date.getDate();
-                const formattedDate = `${month}월${day}일`;
-                dateArray.push(formattedDate);
-              }
-
-              const dateArraySort = dateArray.reverse();
-              setChartLabel(dateArraySort);
-
-              const myDataHRCount = Object.values(dateCountHR);
-              const reverseHR = myDataHRCount.slice(-7);
-              setHRArr(reverseHR);
-
-              const myDataBRCount = Object.values(dateCountBR);
-              const reverseBR = myDataBRCount.slice(-7);
-              setBRArr(reverseBR);
-
-              // yMaxValue 설정
-              const maxValue = Math.max(...reverseHR, ...reverseBR);
-              setYMaxValue(Math.floor(maxValue*1.4));
-            } else {
-              throw new Error(`Failed to fetch device info`);
-            }
-          })
-          .catch((error2) => {
-            console.error("Error fetching device info 2:", error2);
-          });
-      })
-      .catch((error1) => {
-        console.error("Error fetching device info 1:", error1);
-      });
-  };
+  function checkAllZeros(arr1, arr2) {
+    for (let idx in arr1) {
+      if (arr1[idx] !== 0 && arr2[idx] !== 0) {
+        return false;
+      }
+    }
+    return true;
+  }
 
   const data = {
     labels: chartLabel,
     datasets: [
       {
-        label: "  낙상사고   ",
-        data: fallArr,
-        fill: false,
-        borderColor: "#00de05",
-        tension: 0.01,
-      },
-        {
         label: "  심박수   ",
         data: HRArr,
         fill: false,
@@ -151,6 +205,7 @@ function ChartComponent() {
       },
     ],
   };
+
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -161,7 +216,7 @@ function ChartComponent() {
         },
       },
       y: {
-        max: yMaxValue,
+        max: maxDataValueWithPadding,
         beginAtZero: true,
         ticks: {
           callback: function (value) {
@@ -198,7 +253,19 @@ function ChartComponent() {
 
   return (
     <div style={{ width: "694px", height: "240px", margin: "auto" }}>
-      <Line type="line" data={data} options={chartOptions} />
+      {(HRArr && BRArr ==0) ? (
+        <div
+          style={{
+            fontSize: "18px",
+            fontWeight: 500,
+            lineHeight : 11
+          }}
+        >
+          감지된 데이터가 없습니다
+        </div>
+      ) : (
+        <Line data={data} options={chartOptions} />
+      )}
     </div>
   );
 }

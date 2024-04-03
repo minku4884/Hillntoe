@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import "./User.css";
+import "../styles/User.css";
 import axios from "axios";
 import Button from "react-bootstrap/Button";
 import Modal from "react-bootstrap/Modal";
@@ -103,7 +103,6 @@ const handleChangeInfo = async () => {
         data,
         token
       );
-      console.log(response)
       if (response?.status === 200) {
       } else {
         alert("회원을 탈퇴하였습니다");

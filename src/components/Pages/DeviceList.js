@@ -1,25 +1,35 @@
 import axios from "axios";
 import Container from "react-bootstrap/Container";
 import Row from "react-bootstrap/Row";
-import Col from "react-bootstrap/Col";
 import React, { useEffect, useState } from "react";
 import { Modal, Button } from "react-bootstrap";
-import "./DeviceList.css";
-import deviceModal from "/HillnToe/hillntoe/src/asset/devicdeModalImg.png";
+import "../styles/DeviceList.css";
 import HRImg from "/HillnToe/hillntoe/src/asset/HRImg.png";
 import BRImg from "/HillnToe/hillntoe/src/asset/BRImg.png";
 import DisableImg from "/HillnToe/hillntoe/src/asset/DisabledDevice.png";
 import MovingImg from "/HillnToe/hillntoe/src/asset/MovingImg.png";
 import ReadyImg from "/HillnToe/hillntoe/src/asset/ReadyImg.png";
+import FV_Status_0 from "/HillnToe/hillntoe/src/asset/FV_Status_0.png"
+import FV_Status_1 from "/HillnToe/hillntoe/src/asset/FV_Status_1.png"
+import FV_Fall from "/HillnToe/hillntoe/src/asset/FV_Fall.png"
+import FV_Edge from "/HillnToe/hillntoe/src/asset/FV_Edge.png"
+import CV_Status_0 from "/HillnToe/hillntoe/src/asset/CV_Status_0.png"
+import CV_Status_1 from "/HillnToe/hillntoe/src/asset/CV_Status_1.png"
+import CV_Fall from "/HillnToe/hillntoe/src/asset/CV_Fall.png"
 
 function DeviceList() {
   const [deviceInfo, setDeviceInfo] = useState([]);
   const [deviceData, setDeviceData] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [deviceType, setDeviceType] = useState(null);
   const [selectedDevice, setSelectedDevice] = useState(null);
+  const [stateImg, setStateImg] = useState(null);
+  const [FVHRData, setFVHRData] = useState(null);
+  const [FVBRData, setFVBRData] = useState(null);
+  const [FVStateImg,setFVStateImg] = useState(CV_Status_1)
+  const token = sessionStorage.getItem("authorizeKey");
 
   useEffect(() => {
-    const token = sessionStorage.getItem("authorizeKey");
     const fetchDeviceInfo = async () => {
       try {
         const response = await axios.get(
@@ -43,86 +53,13 @@ function DeviceList() {
 
     fetchDeviceInfo();
   }, []);
-  if (deviceInfo.length === 0) {
-    return <div>Loading...</div>;
-  }
 
-
-
-
-
-
-
-
-  const clickDeviceHandler2 = async (deviceId) => {
-    setSelectedDevice(deviceId);
-    setShowModal(true);
-
-    const token = sessionStorage.getItem("authorizeKey");
-
-    try {
-      const response = await axios.get(
-        `http://api.hillntoe.com:7810/api/acqdata/lastest?device_id=${deviceId}`,
-        {
-          headers: {
-            Authorization: token,
-          },
-        }
-      );
-
-      if (response?.status === 200) {
-        const selectedDeviceInfo = response.data.find(
-          (device) => device.device_id === deviceId
-        );
-        setDeviceData(selectedDeviceInfo.datas);
-        setShowModal(true);
-      } else {
-        throw new Error(`Failed to fetch device data (${response?.status})`);
-      }
-    } catch (error) {
-      console.error("Error fetching device data:", error);
-    }
-  };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// http://api.hillntoe.com:7810/api/acqdata/lastest?device_id=${deviceId}`
-
-  
-  // 디바이스 클릭 핸들러
   const clickDeviceHandler = async (deviceId) => {
-    console.log(deviceId)
-    setSelectedDevice(deviceId);
+    setSelectedDevice(deviceId)
+    setTimeout(() => {
     setShowModal(true);
-
-    const token = sessionStorage.getItem("authorizeKey");
+      
+    }, 600);
 
     try {
       const response = await axios.get(
@@ -134,12 +71,22 @@ function DeviceList() {
         }
       );
 
+      const response2 = await axios.get(
+        `http://api.hillntoe.com:7810/api/config/device/info?device_id=${deviceId}`,
+        {
+          headers: {
+            Authorization: token,
+          },
+        }
+      );
+
+      setDeviceType(response2.data[0].device_type);
+
       if (response?.status === 200) {
         const selectedDeviceInfo = response.data.find(
           (device) => device.device_id === deviceId
         );
         setDeviceData(selectedDeviceInfo.datas);
-        setShowModal(true);
       } else {
         throw new Error(`Failed to fetch device data (${response?.status})`);
       }
@@ -147,6 +94,68 @@ function DeviceList() {
       console.error("Error fetching device data:", error);
     }
   };
+
+  useEffect(() => {
+    if (deviceData.length > 0) {
+      const deviceDataStatus = deviceData[deviceData.length - 1].data_value;
+
+      if(deviceType === 14201){
+        if(deviceDataStatus.includes("VITAL") && deviceDataStatus.includes("CENTER") == true ){
+          setFVStateImg(FV_Status_1)
+        } else if (deviceDataStatus.includes("VITAL") && deviceDataStatus.includes("EDGE")) {
+          setFVStateImg(FV_Edge)
+  
+        } else if (deviceDataStatus.includes("DROP" == true)) {
+          setFVStateImg(FV_Fall)
+  
+        } else {
+          setFVStateImg(FV_Status_0)
+        }
+      } else if(deviceType == 14101) {
+        if(deviceType === 14101){
+          if(deviceDataStatus.includes("READY") == true ){
+            setFVStateImg(CV_Status_1)
+          } else if (deviceDataStatus.includes("FALL" == true)) {
+            setFVStateImg(CV_Fall)
+    
+          } else {
+            setFVStateImg(CV_Status_0)
+          }
+      }}
+
+
+
+
+
+
+
+
+
+      if (deviceDataStatus.includes("VITAL") === true) {
+        setStateImg(<img src={ReadyImg} alt="ReadyImg" />);
+        setFVHRData(
+          deviceDataStatus
+            .split(",")
+            [deviceDataStatus.split(",").length - 1]?.replace("+", "")
+        );
+        setFVBRData(
+          deviceDataStatus
+            .split(",")
+            [deviceDataStatus.split(",").length - 3]?.replace("+", "")
+        );
+      } else if (deviceDataStatus.includes("MOVING")) {
+        setStateImg(<img src={MovingImg} alt="MovingImg" />);
+        setFVHRData("--:--");
+        setFVBRData("--:--");
+      } else {
+        setStateImg(<img src={DisableImg} alt="DisableImg" />);
+        setFVHRData("--:--");
+        setFVBRData("--:--");
+      }
+    }
+  }, [deviceData]);
+
+
   // 장치 목록의 device_id 배열 생성
   const deviceIds = deviceInfo.map((device) => device.device_id);
   const errorDeviceCount = deviceInfo.reduce((count, error) => {
@@ -156,6 +165,13 @@ function DeviceList() {
     return count;
   }, 0);
   const renderDeviceRectangles = () => {
+    if (deviceIds.length === 0) {
+      return (
+<div style={{fontSize: "19px", fontWeight:500, textAlign: "center",margin:'90px 0px 0px 400px'}}>
+  등록된 장치가 없습니다
+</div>
+      );
+    }
     return deviceIds.map((deviceId, index) => (
       <div
         className="device-rectangle"
@@ -188,8 +204,8 @@ function DeviceList() {
   };
   return (
     <div className="MainContents">
-      <Container fluid style={{ marginLeft: 0,padding:0 }}>
-        <Row style={{marginLeft:'30px'}}>
+      <Container fluid style={{ marginLeft: 0, padding: 0 }}>
+        <Row style={{ marginLeft: "30px" }}>
           <div
             style={{
               width: "1028px",
@@ -204,7 +220,7 @@ function DeviceList() {
                 fontWeight: "bold",
                 fontSize: "18.5px",
                 background: "#ffffff",
-                padding:'11px 0px 0px 20px',
+                padding: "11px 0px 0px 20px",
                 width: "100%",
                 height: "8%",
               }}
@@ -219,10 +235,10 @@ function DeviceList() {
                 height: "76%",
                 display: "flex",
                 flexWrap: "wrap",
-                alignItems:'flex-start',
-                marginLeft: '30px' ,
-                paddingTop: '10px',
-                overflowY:'auto'
+                alignItems: "flex-start",
+                marginLeft: "30px",
+                paddingTop: "10px",
+                overflowY: "auto",
               }}
             >
               <div
@@ -232,25 +248,11 @@ function DeviceList() {
                   alignItems: "center",
                   display: "flex",
                   flexWrap: "wrap",
+                  
                 }}
               >
                 {renderDeviceRectangles()}
                 {/* 초록색 사각형 */}
-
-                {/* TDD CODE */}
-        {/* <div className="device-rectangle" style={{display:'flex',flexWrap:'wrap',width: "76px",height: "76px",backgroundColor: 'black',borderRadius: "9px",cursor: "pointer",textAlign: 'center',justifyContent: 'center',lineHeight: '76px',fontWeight: 'bold',position:'relative',overflow:'hidden',margin:'9px'}}>s</div>
-        <div className="device-rectangle" style={{display:'flex',flexWrap:'wrap',width: "76px",height: "76px",backgroundColor: 'black',borderRadius: "9px",cursor: "pointer",textAlign: 'center',justifyContent: 'center',lineHeight: '76px',fontWeight: 'bold',position:'relative',overflow:'hidden',margin:'9px'}}>s</div>
-        <div className="device-rectangle" style={{display:'flex',flexWrap:'wrap',width: "76px",height: "76px",backgroundColor: 'black',borderRadius: "9px",cursor: "pointer",textAlign: 'center',justifyContent: 'center',lineHeight: '76px',fontWeight: 'bold',position:'relative',overflow:'hidden',margin:'9px'}}>s</div>
-        <div className="device-rectangle" style={{display:'flex',flexWrap:'wrap',width: "76px",height: "76px",backgroundColor: 'black',borderRadius: "9px",cursor: "pointer",textAlign: 'center',justifyContent: 'center',lineHeight: '76px',fontWeight: 'bold',position:'relative',overflow:'hidden',margin:'9px'}}>s</div>
-        <div className="device-rectangle" style={{display:'flex',flexWrap:'wrap',width: "76px",height: "76px",backgroundColor: 'black',borderRadius: "9px",cursor: "pointer",textAlign: 'center',justifyContent: 'center',lineHeight: '76px',fontWeight: 'bold',position:'relative',overflow:'hidden',margin:'9px'}}>s</div>
-        <div className="device-rectangle" style={{display:'flex',flexWrap:'wrap',width: "76px",height: "76px",backgroundColor: 'black',borderRadius: "9px",cursor: "pointer",textAlign: 'center',justifyContent: 'center',lineHeight: '76px',fontWeight: 'bold',position:'relative',overflow:'hidden',margin:'9px'}}>s</div>
-        <div className="device-rectangle" style={{display:'flex',flexWrap:'wrap',width: "76px",height: "76px",backgroundColor: 'black',borderRadius: "9px",cursor: "pointer",textAlign: 'center',justifyContent: 'center',lineHeight: '76px',fontWeight: 'bold',position:'relative',overflow:'hidden',margin:'9px'}}>s</div>
-        <div className="device-rectangle" style={{display:'flex',flexWrap:'wrap',width: "76px",height: "76px",backgroundColor: 'black',borderRadius: "9px",cursor: "pointer",textAlign: 'center',justifyContent: 'center',lineHeight: '76px',fontWeight: 'bold',position:'relative',overflow:'hidden',margin:'9px'}}>s</div>
-        <div className="device-rectangle" style={{display:'flex',flexWrap:'wrap',width: "76px",height: "76px",backgroundColor: 'black',borderRadius: "9px",cursor: "pointer",textAlign: 'center',justifyContent: 'center',lineHeight: '76px',fontWeight: 'bold',position:'relative',overflow:'hidden',margin:'9px'}}>s</div>
-        <div className="device-rectangle" style={{display:'flex',flexWrap:'wrap',width: "76px",height: "76px",backgroundColor: 'black',borderRadius: "9px",cursor: "pointer",textAlign: 'center',justifyContent: 'center',lineHeight: '76px',fontWeight: 'bold',position:'relative',overflow:'hidden',margin:'9px'}}>s</div>
-        <div className="device-rectangle" style={{display:'flex',flexWrap:'wrap',width: "76px",height: "76px",backgroundColor: 'black',borderRadius: "9px",cursor: "pointer",textAlign: 'center',justifyContent: 'center',lineHeight: '76px',fontWeight: 'bold',position:'relative',overflow:'hidden',margin:'9px'}}>s</div>
-        <div className="device-rectangle" style={{display:'flex',flexWrap:'wrap',width: "76px",height: "76px",backgroundColor: 'black',borderRadius: "9px",cursor: "pointer",textAlign: 'center',justifyContent: 'center',lineHeight: '76px',fontWeight: 'bold',position:'relative',overflow:'hidden',margin:'9px'}}>s</div>
-        <div className="device-rectangle" style={{display:'flex',flexWrap:'wrap',width: "76px",height: "76px",backgroundColor: 'black',borderRadius: "9px",cursor: "pointer",textAlign: 'center',justifyContent: 'center',lineHeight: '76px',fontWeight: 'bold',position:'relative',overflow:'hidden',margin:'9px'}}>s</div> */}
               </div>
             </div>
           </div>
@@ -389,7 +391,6 @@ function DeviceList() {
           </div>
         </Row>
       </Container>
-
       {/* 모달 */}
       <Modal
         style={{ borderRadius: "10px" }}
@@ -403,7 +404,7 @@ function DeviceList() {
         <Modal.Body>
           <div className="Modal-container">
             <div className="deviceImg">
-              <img src={deviceModal} alt="deviceModal" />
+              <img src={FVStateImg} alt="deviceModal" />
             </div>
 
             <div className="deviceInfo">
@@ -414,76 +415,111 @@ function DeviceList() {
                   )?.device_name
                 }
               </h4>
-              <h5>HRS_R8A_E_CV</h5>
-              <div className="STATE-container">
-                {deviceData.length > 0 ? (
-                  deviceData[deviceData.length - 1]?.data_value
-                    .split(":")[1]
-                    ?.split("_")[0]
-                    ?.split(",")[0] === "READY" ? (
-                    <img src={ReadyImg} alt="ReadyImg" className="readyimage" />
-                  ) : deviceData[deviceData.length - 1].data_value
-                      .split(":")[1]
-                      .split("_")[0]
-                      .split(",")[0] === "MOVING" ? (
-                    <img
-                      src={MovingImg}
-                      alt="MovingImg"
-                      className="movingimage"
-                    />
-                  ) : (
-                    <img
-                      src={DisableImg}
-                      alt="DisableImg"
-                      className="disableimage"
-                    />
-                  )
-                ) : null}
-              </div>
-              {deviceData && deviceData.length > 0 && (
-                <div className="HR-BR-container">
 
-
-
-
-                  <div className="HR-container">
-                    <img src={HRImg} alt="HRImage" className="HRimage" />
-                    <span>
-                      {deviceData[deviceData.length - 1]?.data_value
+              {deviceType === 14101 && (
+                <>
+                  {/* CV MAIN */}
+                  {/* CV TITLE */}
+                  <h5>HRS_R8A_E_CV</h5>
+                  {/* CV STATE IMG */}
+                  <div className="STATE-container">
+                    {deviceData.length > 0 ? (
+                      deviceData[deviceData.length - 1]?.data_value
                         .split(":")[1]
                         ?.split("_")[0]
-                        ?.split(",")[0] === "READY"
-                        ? deviceData[deviceData.length - 1]?.data_value
-                            .split(",")
-                            [
-                              deviceData[
-                                deviceData.length - 1
-                              ]?.data_value.split(",").length - 1
-                            ]?.replace("+", "")
-                        : " --.--"}
-                    </span>
-                    <span className="bpm-title">BPM</span>
+                        ?.split(",")[0] === "READY" ? (
+                        <img
+                          src={ReadyImg}
+                          alt="ReadyImg"
+                          className="readyimage"
+                        />
+                      ) : deviceData[deviceData.length - 1].data_value
+                          .split(":")[1]
+                          .split("_")[0]
+                          .split(",")[0] === "MOVING" ? (
+                        <img
+                          src={MovingImg}
+                          alt="MovingImg"
+                          className="movingimage"
+                        />
+                      ) : (
+                        <img
+                          src={DisableImg}
+                          alt="DisableImg"
+                          className="disableimage"
+                        />
+                      )
+                    ) : null}
                   </div>
-
-
-
-                  <div className="BR-container">
-                    <img src={BRImg} alt="BRImage" className="BRimage" />
-                    <span>
-                      {deviceData[deviceData.length - 1]?.data_value
-                        .split(":")[1]
-                        ?.split("_")[0]
-                        ?.split(",")[0] === "READY"
-                        ? deviceData[deviceData.length - 1]?.data_value
+                  {/* CV HRBR-CONTAINER */}
+                  {deviceData && deviceData.length > 0 && (
+                    <div className="HR-BR-container">
+                      <div className="HR-container">
+                        <img src={HRImg} alt="HRImage" className="HRimage" />
+                        <span>
+                          {deviceData[deviceData.length - 1]?.data_value
                             .split(":")[1]
-                            ?.split(",")[9]
-                            ?.replace("+", "")
-                        : " --.--"}
-                    </span>
-                    <span className="bpm-title">BPM</span>
-                  </div>
-                </div>
+                            ?.split("_")[0]
+                            ?.split(",")[0] === "READY"
+                            ? deviceData[deviceData.length - 1]?.data_value
+                                .split(",")
+                                [
+                                  deviceData[
+                                    deviceData.length - 1
+                                  ]?.data_value.split(",").length - 1
+                                ]?.replace("+", "")
+                            : " --.--"}
+                        </span>
+                        <span className="bpm-title">BPM</span>
+                      </div>
+
+                      <div className="BR-container">
+                        <img src={BRImg} alt="BRImage" className="BRimage" />
+                        <span>
+                          {deviceData[deviceData.length - 1]?.data_value
+                            .split(":")[1]
+                            ?.split("_")[0]
+                            ?.split(",")[0] === "READY"
+                            ? deviceData[deviceData.length - 1]?.data_value
+                                .split(":")[1]
+                                ?.split(",")[9]
+                                ?.replace("+", "")
+                            : " --.--"}
+                        </span>
+                        <span className="bpm-title">BPM</span>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
+
+              {deviceType === 14201 && (
+                <>
+                  {/* FV */}
+                  {/* FV MAIN */}
+                  {/* FV TITLE */}
+                  <h5>HRS_R8A_E_FV</h5>
+                  {/* FV STATE IMG */}
+                  <div className="STATE-container">{stateImg}</div>
+                  {/* FV HRBR-CONTAINER */}
+                  {deviceData && deviceData.length > 0 && (
+                    <div className="HR-BR-container">
+                      <div className="HR-container">
+                        <img src={HRImg} alt="HRImage" className="HRimage" />
+                        <span>{FVHRData}</span>
+                        <span className="bpm-title">BPM</span>
+                      </div>
+
+                      <div className="BR-container">
+                        <img src={BRImg} alt="BRImage" className="BRimage" />
+                        <span>{FVBRData}</span>
+                        <span className="bpm-title">BPM</span>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
               <button className="closeBtn" onClick={() => setShowModal(false)}>
                 닫기
               </button>

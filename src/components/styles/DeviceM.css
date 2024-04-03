@@ -1,0 +1,61 @@
+
+.Device-Header {
+    background-color:yellow;
+    height: 100px;
+}
+
+.Device-Type-DropDown {
+    float: right;
+    margin: 20px 60px 20px 0px ;
+    padding-top: 10px;
+}
+
+.Device-MainContent {
+    background-color: chartreuse;
+    height: 906px;
+    padding: 0px 150px;
+    display: flex;
+    flex-wrap: wrap;
+}
+
+
+
+.Device-Num {
+    background-color: #fff;
+    width: 380px;
+    height: 400px;
+    margin: 20px auto;
+    border-radius: 20px;
+    border: 4px solid skyblue;
+    overflow: hidden;
+}
+
+.Device-Num > .Device-Content-main {
+    background-color: blueviolet;
+    border-radius: 0px;
+    width: 100%;
+    height: 65%;
+}
+
+.Device-Num > .Device-Content-submain {
+    background-color: skyblue;
+    border-radius: 0px;
+    width: 100%;
+    height: 35%;
+    display: flex;
+}
+
+.Device-DataValue{
+    margin:  8px 0px 0px 25px;
+    font-size: 16px;
+}
+
+.Device-Content-submain-P1 {
+    width: 50%;
+    background-color: white;
+}
+
+.Device-Content-submain-P2 {
+    width: 50%;
+    background-color: hotpink;
+}
